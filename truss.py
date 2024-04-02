@@ -49,20 +49,18 @@ class Member(Edge):
 			]
 		])
 
-	@property
-	def Kl(self):
-		"""Local member stiffness matrix"""
+	def get_local_member_stiffness_matrix(self):
+		"""Local member stiffness matrix Kl"""
 		return self.young*self.area/self.get_length() * np.array([[1, -1],[-1, 1]])
 	
-	@property
-	def Kg(self):
-		"""Global member stiffness matrix"""
-		return self.get_transformation_matrix().T @ self.Kl @ self.get_transformation_matrix()
+	def get_global_member_stiffness_matrix(self):
+		"""Global member stiffness matrix Kg"""
+		return self.get_transformation_matrix().T @ self.get_local_member_stiffness_matrix() @ self.get_transformation_matrix()
 	
 	def get_Kp(self, N:int, indices:List[int]):
 		"""Returns the single member stiffness matrix"""
 		row, col, data = [], [], []
-		Kg = self.Kg
+		Kg = self.get_global_member_stiffness_matrix()
 		for i, line in enumerate(Kg):
 			for j, item in enumerate(line):
 				row.append( indices[i] )
@@ -73,7 +71,7 @@ class Member(Edge):
 		# 		row.append( indices[i] )
 		# 		col.append( indices[j] )
 		# 		data.append(Kg[i,j])
-		Kp = sparse.csr_array((data, (row, col)), shape=(N,N)) #.toarray()
+		Kp = sparse.csr_array((data, (row, col)), shape=(N,N))
 		return Kp
 
 	@property
