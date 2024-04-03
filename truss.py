@@ -152,10 +152,10 @@ class Truss(Graph):
 
 
 if __name__ == '__main__':
-	j0 = Joint(pos=np.array([0,0]), key=0)
-	j1 = Joint(pos=np.array([4,0]), key=1)
-	j2 = Joint(pos=np.array([8,0]), key=2)
-	j3 = Joint(pos=np.array([4,-6]), fext=np.array([1.e5, -1.e5]), disp=np.array([0,0]), dof=np.array([1,1]), key=3)
+	j0 = Joint(pos=np.array([0,0]), fext=np.zeros(2), disp=np.zeros(2), dof=np.zeros(2), key=0)
+	j1 = Joint(pos=np.array([4,0]), fext=np.zeros(2), disp=np.zeros(2), dof=np.zeros(2), key=1)
+	j2 = Joint(pos=np.array([8,0]), fext=np.zeros(2), disp=np.zeros(2), dof=np.zeros(2), key=2)
+	j3 = Joint(pos=np.array([4,-6]), fext=np.array([1.e5, -1.e5]), disp=np.zeros(2), dof=np.array([1,1]), key=3)
 
 	m0 = Member(tail=j0, head=j3, young=2.e11, area=5.e-3)
 	m1 = Member(tail=j1, head=j3, young=2.e11, area=5.e-3)
@@ -197,9 +197,3 @@ if __name__ == '__main__':
 
 # from numpy.typing import NDArray
 
-
-
-	# @property
-	# def coords(self):
-	# 	return np.vstack((self.tail.pos, self.head.pos))
-	
