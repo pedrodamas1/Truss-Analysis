@@ -8,7 +8,7 @@ np.set_printoptions(linewidth=np.inf)
 
 class Joint(Node):
 	'''Class to represent a joint in a 2D truss'''
-	def __init__(self, pos, fext, disp, dof, **kwargs) -> None:
+	def __init__(self, pos: np.ndarray, fext: np.ndarray, disp: np.ndarray, dof: np.ndarray, **kwargs) -> None:
 		self.pos = pos # position
 		self.fext = fext # external forces
 		self.disp = disp # displacement
@@ -25,54 +25,57 @@ class Member(Edge):
 
 	def get_length(self) -> float:
 		"""Member length"""
-		return np.linalg.norm(self.head.pos - self.tail.pos)
+		length = np.linalg.norm(self.head.pos - self.tail.pos)
+		return length
 
 	def get_angle(self) -> float:
 		"""Member angle"""
 		x,y = self.head.pos - self.tail.pos
-		return np.arctan2(y, x)
+		angle = np.arctan2(y, x)
+		return angle
 	
-	def get_transformation_matrix(self):
-		"""Transformation matrix"""
-		return np.array([
-			[
-				np.cos(self.get_angle()), 
-				np.sin(self.get_angle()), 
-				0., 
-				0.
-			], 
-			[
-				0., 
-				0., 
-				np.cos(self.get_angle()), 
-				np.sin(self.get_angle())
-			]
+	def get_transformation_matrix(self) -> np.ndarray:
+		"""The transformation matrix T acts as a bridge between local and global coordinates"""
+		angle = self.get_angle()
+		c = np.cos(angle)
+		s = np.sin(angle)
+		transformation_matrix = np.array([
+			[c, s, 0, 0], 
+			[0, 0, c, s]
 		])
+		return transformation_matrix
 
-	def get_local_member_stiffness_matrix(self):
-		"""Local member stiffness matrix Kl"""
-		return self.young*self.area/self.get_length() * np.array([[1, -1],[-1, 1]])
+	def get_local_member_stiffness_matrix(self) -> np.ndarray:
+		"""The Local Element Stiffness Matrix KL relates the forces at each node, 
+		FL with the corresponding nodal displacements uL.
+		FL (2*1) = KL (2*2) * uL (2*1)
+		"""
+		E = self.young
+		A = self.area
+		L = self.get_length()
+		local_member_stiffness_matrix = E*A/L * np.array([[1, -1],[-1, 1]])
+		return local_member_stiffness_matrix
 	
-	def get_global_member_stiffness_matrix(self):
-		"""Global member stiffness matrix Kg"""
-		return self.get_transformation_matrix().T @ self.get_local_member_stiffness_matrix() @ self.get_transformation_matrix()
+	def get_global_member_stiffness_matrix(self) -> np.ndarray:
+		"""T.T * KL * T is the Global Element Stiffness Matrix, KG, relating forces 
+		defined in a global reference frame to displacements also defined in a global 
+		reference frame"""
+		T = self.get_transformation_matrix()
+		KL = self.get_local_member_stiffness_matrix()
+		global_member_stiffness_matrix = T.T @ KL @ T
+		return global_member_stiffness_matrix
 	
-	def get_Kp(self, N:int, indices:List[int]):
-		"""Returns the single member stiffness matrix"""
+	def get_primary_member_stiffness_matrix(self, N:int, indices:List[int]) -> sparse.csr_array:
+		"""Primary member Stiffness Matrix KP"""
 		row, col, data = [], [], []
-		Kg = self.get_global_member_stiffness_matrix()
-		for i, line in enumerate(Kg):
+		KG = self.get_global_member_stiffness_matrix()
+		for i, line in enumerate(KG):
 			for j, item in enumerate(line):
 				row.append( indices[i] )
 				col.append( indices[j] )
 				data.append(item)
-		# for i in range(4):
-		# 	for j in range(4):
-		# 		row.append( indices[i] )
-		# 		col.append( indices[j] )
-		# 		data.append(Kg[i,j])
-		Kp = sparse.csr_array((data, (row, col)), shape=(N,N))
-		return Kp
+		primary_member_stiffness_matrix = sparse.csr_array((data, (row, col)), shape=(N,N))
+		return primary_member_stiffness_matrix
 
 	@property
 	def u(self):
@@ -82,8 +85,12 @@ class Member(Edge):
 	def f(self) -> float:
 		"""Returns the member force"""
 		u = self.u.flatten()
-		u1, u2 = self.get_transformation_matrix() @ u
-		return self.young*self.area/self.get_length() * (u2-u1)
+		T = self.get_transformation_matrix()
+		u1, u2 = T @ u
+		E = self.young
+		A = self.area
+		L = self.get_length()
+		return E*A/L * (u2-u1)
 
 
 class Truss(Graph):
@@ -111,7 +118,7 @@ class Truss(Graph):
 			i,j = member.tail.key, member.head.key
 			k = nodes_dict[i]
 			l = nodes_dict[j]
-			K += member.get_Kp(N, [2*k, 2*k+1, 2*l, 2*l+1])
+			K += member.get_primary_member_stiffness_matrix(N, [2*k, 2*k+1, 2*l, 2*l+1])
 
 		return K
 
@@ -144,11 +151,10 @@ class Truss(Graph):
 		self.nodes.set('fext', np.reshape(K @ u, dim))
 
 
-
 if __name__ == '__main__':
-	j0 = Joint(pos=np.array([0,0]), fext=np.array([0,0]), disp=np.array([0,0]), dof=np.array([0,0]), key=0)
-	j1 = Joint(pos=np.array([4,0]), fext=np.array([0,0]), disp=np.array([0,0]), dof=np.array([0,0]), key=1)
-	j2 = Joint(pos=np.array([8,0]), fext=np.array([0,0]), disp=np.array([0,0]), dof=np.array([0,0]), key=2)
+	j0 = Joint(pos=np.array([0,0]), key=0)
+	j1 = Joint(pos=np.array([4,0]), key=1)
+	j2 = Joint(pos=np.array([8,0]), key=2)
 	j3 = Joint(pos=np.array([4,-6]), fext=np.array([1.e5, -1.e5]), disp=np.array([0,0]), dof=np.array([1,1]), key=3)
 
 	m0 = Member(tail=j0, head=j3, young=2.e11, area=5.e-3)
