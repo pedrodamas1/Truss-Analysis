@@ -133,10 +133,24 @@ class Truss(Graph):
 	"""Class to represent a truss structure"""
 	
 	def get_primary_stiffness_matrix(self):
+	
+		nodes = self.nodes
+		N = len(nodes)
+		nodes_dict = dict(zip(nodes, range(N)))
+		primary_stiffness_matrix = np.zeros((2*N, 2*N))
 		
-		N = 2*len(self.nodes)
-		primary_stiffness_matrix = np.zeros((N,N))
-		pass
+		member : Member
+		for member in self.edges:
+			KG = member.get_global_member_stiffness_matrix()
+			K11 = KG[:2, :2]
+			K12 = KG[:2, 2:]
+			K21 = KG[2:, :2]
+			K22 = KG[2:, 2:]
+			i = nodes_dict[member.tail]
+			j = nodes_dict[member.head]
+			primary_stiffness_matrix
+			# += member.get_primary_member_stiffness_matrix(N, [2*k, 2*k+1, 2*l, 2*l+1])
+			break
 	
 	# @property
 	# def K(self):
@@ -199,16 +213,17 @@ if __name__ == '__main__':
 	j2 = Joint(coordinates=np.array([8,0]), external_forces=np.zeros(2), displacement=np.zeros(2), degrees_of_freedom=np.zeros(2), key=2)
 	j3 = Joint(coordinates=np.array([4,-6]), external_forces=np.array([1.e5, -1.e5]), displacement=np.zeros(2), degrees_of_freedom=np.array([1,1]), key=3)
 
-	m0 = Member(tail=j0, head=j3, youngs_modulus=2.e11, area=5.e-3)
-	m1 = Member(tail=j1, head=j3, youngs_modulus=2.e11, area=5.e-3)
-	m2 = Member(tail=j2, head=j3, youngs_modulus=2.e11, area=5.e-3)
+	m0 = Member(tail=j0, head=j3, youngs_modulus=2.e11, area=5.e-3, key='A')
+	m1 = Member(tail=j1, head=j3, youngs_modulus=2.e11, area=5.e-3, key='B')
+	m2 = Member(tail=j2, head=j3, youngs_modulus=2.e11, area=5.e-3, key='C')
 
-	print((m0.get_global_member_stiffness_matrix()/1e9).round(4))
+	# print((m0.get_global_member_stiffness_matrix()/1e9).round(4))
 
 	t = Truss(
 		nodes=Nodes(j0, j1, j2, j3),
 		edges=Edges(m0, m1, m2)
 	)
+	t.get_primary_stiffness_matrix()
 
 	# t.solve()
 
