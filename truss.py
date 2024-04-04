@@ -8,8 +8,8 @@ np.set_printoptions(linewidth=np.inf)
 
 class Joint(Node):
 	'''Class to represent a joint in a 2D truss'''
-	def __init__(self, pos: np.ndarray, fext: np.ndarray, disp: np.ndarray, dof: np.ndarray, **kwargs) -> None:
-		self.pos = pos # position
+	def __init__(self, coordinates: np.ndarray, fext: np.ndarray, disp: np.ndarray, dof: np.ndarray, **kwargs) -> None:
+		self.coordinates = coordinates # position
 		self.fext = fext # external forces
 		self.disp = disp # displacement
 		self.dof = dof # degrees of freedom
@@ -25,12 +25,12 @@ class Member(Edge):
 
 	def get_length(self) -> float:
 		"""Member length"""
-		length = np.linalg.norm(self.head.pos - self.tail.pos)
+		length = np.linalg.norm(self.head.coordinates - self.tail.coordinates)
 		return length
 
 	def get_angle(self) -> float:
 		"""Member angle"""
-		x,y = self.head.pos - self.tail.pos
+		x,y = self.head.coordinates - self.tail.coordinates
 		angle = np.arctan2(y, x)
 		return angle
 	
@@ -152,10 +152,10 @@ class Truss(Graph):
 
 
 if __name__ == '__main__':
-	j0 = Joint(pos=np.array([0,0]), key=0)
-	j1 = Joint(pos=np.array([4,0]), key=1)
-	j2 = Joint(pos=np.array([8,0]), key=2)
-	j3 = Joint(pos=np.array([4,-6]), fext=np.array([1.e5, -1.e5]), disp=np.array([0,0]), dof=np.array([1,1]), key=3)
+	j0 = Joint(coordinates=np.array([0,0]), key=0)
+	j1 = Joint(coordinates=np.array([4,0]), key=1)
+	j2 = Joint(coordinates=np.array([8,0]), key=2)
+	j3 = Joint(coordinates=np.array([4,-6]), fext=np.array([1.e5, -1.e5]), disp=np.array([0,0]), dof=np.array([1,1]), key=3)
 
 	m0 = Member(tail=j0, head=j3, young=2.e11, area=5.e-3)
 	m1 = Member(tail=j1, head=j3, young=2.e11, area=5.e-3)
@@ -172,7 +172,7 @@ if __name__ == '__main__':
 	import matplotlib.pyplot as plt
 
 	# Get the nodal position
-	pos = dict(zip(t.nodes, t.nodes.get('pos')))
+	pos = dict(zip(t.nodes, t.nodes.get('coordinates')))
 
 	# Create just a figure and only one subplot
 	fig, ax = plt.subplots()
@@ -182,7 +182,7 @@ if __name__ == '__main__':
 	draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl=None)
 
 	# Get the nodal position
-	pos = dict(zip(t.nodes, t.nodes.get('pos')+1000*t.nodes.get('disp')))
+	pos = dict(zip(t.nodes, t.nodes.get('coordinates')+1000*t.nodes.get('disp')))
 
 	# Draw a simple plot of the truss
 	draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl='f', edecs=2)
