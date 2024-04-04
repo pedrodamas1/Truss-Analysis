@@ -5,14 +5,37 @@ from scipy.linalg import solve
 import numpy as np
 np.set_printoptions(linewidth=np.inf)
 
+# Use this to defined the dimension of the problem
+# 2D truss: 2
+# 2D frame: 3
+# 3D truss: 3
+# 3D frame: ??
+DIMENSION = 2
+
 
 class Joint(Node):
 	'''Class to represent a joint in a 2D truss'''
-	def __init__(self, coordinates: np.ndarray, fext: np.ndarray, disp: np.ndarray, dof: np.ndarray, **kwargs) -> None:
-		self.coordinates = coordinates # position
-		self.fext = fext # external forces
-		self.disp = disp # displacement
-		self.dof = dof # degrees of freedom
+
+	def __init__(self, 
+			  coordinates: np.ndarray, 
+			  external_forces: np.ndarray = np.zeros(2), 
+			  displacement: np.ndarray = np.zeros(2), 
+			  degrees_of_freedom: np.ndarray = np.zeros(2), 
+			  **kwargs) -> None:
+		'''
+		Initialize a Joint object.
+
+		Parameters:
+		coordinates (np.ndarray): The coordinates of the joint.
+		external_forces (np.ndarray): External forces applied on the joint.
+		displacement (np.ndarray): Displacement of the joint.
+		degrees_of_freedom (np.ndarray): Degrees of freedom of the joint.
+		**kwargs: Additional keyword arguments.
+		'''
+		self.coordinates = coordinates
+		self.external_forces = external_forces
+		self.displacement = displacement
+		self.degrees_of_freedom = degrees_of_freedom
 		super().__init__(**kwargs)
 
 
@@ -79,7 +102,7 @@ class Member(Edge):
 
 	@property
 	def u(self):
-		return np.vstack((self.tail.disp, self.head.disp))
+		return np.vstack((self.tail.displacement, self.head.displacement))
 
 	@property
 	def f(self) -> float:
@@ -126,17 +149,17 @@ class Truss(Graph):
 		"""solves the stiffness matrix system"""
 		
 		# Get the degrees of freedom and external forces. Use np.ravel([A,B], 'F) to concatenate alternating
-		dof = self.nodes.get('dof').flatten()
-		fext = self.nodes.get('fext').flatten()
+		degrees_of_freedom = self.nodes.get('degrees_of_freedom').flatten()
+		external_forces = self.nodes.get('external_forces').flatten()
 
 		# Get the indices of free nodes
-		indices = np.where(dof == 1)[0]
+		indices = np.where(degrees_of_freedom == 1)[0]
 
 		# Get the global truss stiffness matrix
 		K = self.K
 
 		# Calculate the displacements of free DOFs
-		utemp = solve( K[indices,:][:,indices], fext[indices] ) # ax = b
+		utemp = solve( K[indices,:][:,indices], external_forces[indices] ) # ax = b
 
 		# Get the number of DOFS. For 3D trusses, the dimension is (N,3)
 		N = len(self.nodes)
@@ -145,17 +168,17 @@ class Truss(Graph):
 		# Reconstruct and set the calculated displacements. For 3D is 3*N
 		u = np.zeros(2*N)
 		np.put(u, indices, utemp)
-		self.nodes.set('disp', np.reshape(u, dim))
+		self.nodes.set('displacement', np.reshape(u, dim))
 
 		# Calculate the reaction forces
-		self.nodes.set('fext', np.reshape(K @ u, dim))
+		self.nodes.set('external_forces', np.reshape(K @ u, dim))
 
 
 if __name__ == '__main__':
-	j0 = Joint(pos=np.array([0,0]), fext=np.zeros(2), disp=np.zeros(2), dof=np.zeros(2), key=0)
-	j1 = Joint(pos=np.array([4,0]), fext=np.zeros(2), disp=np.zeros(2), dof=np.zeros(2), key=1)
-	j2 = Joint(pos=np.array([8,0]), fext=np.zeros(2), disp=np.zeros(2), dof=np.zeros(2), key=2)
-	j3 = Joint(pos=np.array([4,-6]), fext=np.array([1.e5, -1.e5]), disp=np.zeros(2), dof=np.array([1,1]), key=3)
+	j0 = Joint(coordinates=np.array([0,0]), external_forces=np.zeros(2), displacement=np.zeros(2), degrees_of_freedom=np.zeros(2), key=0)
+	j1 = Joint(coordinates=np.array([4,0]), external_forces=np.zeros(2), displacement=np.zeros(2), degrees_of_freedom=np.zeros(2), key=1)
+	j2 = Joint(coordinates=np.array([8,0]), external_forces=np.zeros(2), displacement=np.zeros(2), degrees_of_freedom=np.zeros(2), key=2)
+	j3 = Joint(coordinates=np.array([4,-6]), external_forces=np.array([1.e5, -1.e5]), displacement=np.zeros(2), degrees_of_freedom=np.array([1,1]), key=3)
 
 	m0 = Member(tail=j0, head=j3, young=2.e11, area=5.e-3)
 	m1 = Member(tail=j1, head=j3, young=2.e11, area=5.e-3)
@@ -177,12 +200,13 @@ if __name__ == '__main__':
 	# Create just a figure and only one subplot
 	fig, ax = plt.subplots()
 	ax.set_title('Title')
+	ax.grid()
 
 	# Draw a simple plot of the truss
 	draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl=None)
 
 	# Get the nodal position
-	pos = dict(zip(t.nodes, t.nodes.get('coordinates')+1000*t.nodes.get('disp')))
+	pos = dict(zip(t.nodes, t.nodes.get('coordinates')+1000*t.nodes.get('displacement')))
 
 	# Draw a simple plot of the truss
 	draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl='f', edecs=2)
