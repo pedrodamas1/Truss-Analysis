@@ -1,3 +1,7 @@
+"""
+https://www.degreetutors.com/direct-stiffness-method/
+"""
+
 from graph import Node, Edge, Nodes, Edges, Graph
 from typing import Tuple, List
 from scipy import sparse
@@ -40,20 +44,33 @@ class Joint(Node):
 
 
 class Member(Edge):
-	'''Class to represent a joint in a truss'''
-	def __init__(self, tail: Joint, head: Joint, young: float, area: float, **kwargs) -> None:
-		super().__init__(tail, head, **kwargs)
-		self.young = young # young's modulus
-		self.area = area # xsection area
+	'''Class to represent a member in a truss'''
+
+	def __init__(self, tail: Joint, head: Joint, youngs_modulus: float, area: float, **kwargs) -> None:
+		'''
+		Initialize a Member object.
+
+		Parameters:
+		tail (Joint): The joint at the tail of the member.
+		head (Joint): The joint at the head of the member.
+		young (float): Young's modulus of the member material.
+		area (float): Cross-sectional area of the member.
+		**kwargs: Additional keyword arguments.
+		'''
+		self.tail = tail
+		self.head = head
+		self.youngs_modulus = youngs_modulus
+		self.area = area
+		self.__dict__.update(kwargs)
 
 	def get_length(self) -> float:
-		"""Member length"""
+		"""Calculate the length of the member."""
 		length = np.linalg.norm(self.head.coordinates - self.tail.coordinates)
 		return length
 
 	def get_angle(self) -> float:
-		"""Member angle"""
-		x,y = self.head.coordinates - self.tail.coordinates
+		"""Calculate the angle of the member."""
+		x, y = self.head.coordinates - self.tail.coordinates
 		angle = np.arctan2(y, x)
 		return angle
 	
@@ -69,25 +86,26 @@ class Member(Edge):
 		return transformation_matrix
 
 	def get_local_member_stiffness_matrix(self) -> np.ndarray:
-		"""The Local Element Stiffness Matrix KL relates the forces at each node, 
-		FL with the corresponding nodal displacements uL.
-		FL (2*1) = KL (2*2) * uL (2*1)
-		"""
-		E = self.young
+		"""Calculate the local member stiffness matrix."""
+		E = self.youngs_modulus
 		A = self.area
 		L = self.get_length()
-		local_member_stiffness_matrix = E*A/L * np.array([[1, -1],[-1, 1]])
+		local_member_stiffness_matrix = ( E*A/L) * np.array([[1, -1],[-1, 1]])
 		return local_member_stiffness_matrix
 	
 	def get_global_member_stiffness_matrix(self) -> np.ndarray:
-		"""T.T * KL * T is the Global Element Stiffness Matrix, KG, relating forces 
-		defined in a global reference frame to displacements also defined in a global 
-		reference frame"""
+		"""Calculate the global member stiffness matrix."""
 		T = self.get_transformation_matrix()
 		KL = self.get_local_member_stiffness_matrix()
 		global_member_stiffness_matrix = T.T @ KL @ T
 		return global_member_stiffness_matrix
 	
+
+
+
+
+
+
 	def get_primary_member_stiffness_matrix(self, N:int, indices:List[int]) -> sparse.csr_array:
 		"""Primary member Stiffness Matrix KP"""
 		row, col, data = [], [], []
@@ -110,7 +128,7 @@ class Member(Edge):
 		u = self.u.flatten()
 		T = self.get_transformation_matrix()
 		u1, u2 = T @ u
-		E = self.young
+		E = self.youngs_modulus
 		A = self.area
 		L = self.get_length()
 		return E*A/L * (u2-u1)
@@ -180,44 +198,41 @@ if __name__ == '__main__':
 	j2 = Joint(coordinates=np.array([8,0]), external_forces=np.zeros(2), displacement=np.zeros(2), degrees_of_freedom=np.zeros(2), key=2)
 	j3 = Joint(coordinates=np.array([4,-6]), external_forces=np.array([1.e5, -1.e5]), displacement=np.zeros(2), degrees_of_freedom=np.array([1,1]), key=3)
 
-	m0 = Member(tail=j0, head=j3, young=2.e11, area=5.e-3)
-	m1 = Member(tail=j1, head=j3, young=2.e11, area=5.e-3)
-	m2 = Member(tail=j2, head=j3, young=2.e11, area=5.e-3)
+	m0 = Member(tail=j0, head=j3, youngs_modulus=2.e11, area=5.e-3)
+	m1 = Member(tail=j1, head=j3, youngs_modulus=2.e11, area=5.e-3)
+	m2 = Member(tail=j2, head=j3, youngs_modulus=2.e11, area=5.e-3)
 
-	t = Truss(
-		nodes=Nodes(j0, j1, j2, j3),
-		edges=Edges(m0, m1, m2)
-	)
-
-	t.solve()
-
-	from analysis import draw
-	import matplotlib.pyplot as plt
-
-	# Get the nodal position
-	pos = dict(zip(t.nodes, t.nodes.get('coordinates')))
-
-	# Create just a figure and only one subplot
-	fig, ax = plt.subplots()
-	ax.set_title('Title')
-	ax.grid()
-
-	# Draw a simple plot of the truss
-	draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl=None)
-
-	# Get the nodal position
-	pos = dict(zip(t.nodes, t.nodes.get('coordinates')+1000*t.nodes.get('displacement')))
-
-	# Draw a simple plot of the truss
-	draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl='f', edecs=2)
-	plt.show()
+	print((m0.get_global_member_stiffness_matrix()/1e9).round(4))
 
 
 
+	# t = Truss(
+	# 	nodes=Nodes(j0, j1, j2, j3),
+	# 	edges=Edges(m0, m1, m2)
+	# )
 
-# """
-# https://www.degreetutors.com/direct-stiffness-method/
-# """
+	# t.solve()
 
-# from numpy.typing import NDArray
+	# from analysis import draw
+	# import matplotlib.pyplot as plt
+
+	# # Get the nodal position
+	# pos = dict(zip(t.nodes, t.nodes.get('coordinates')))
+
+	# # Create just a figure and only one subplot
+	# fig, ax = plt.subplots()
+	# ax.set_title('Title')
+	# ax.grid()
+
+	# # Draw a simple plot of the truss
+	# draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl=None)
+
+	# # Get the nodal position
+	# pos = dict(zip(t.nodes, t.nodes.get('coordinates')+1000*t.nodes.get('displacement')))
+
+	# # Draw a simple plot of the truss
+	# draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl='f', edecs=2)
+	# plt.show()
+
+
 
