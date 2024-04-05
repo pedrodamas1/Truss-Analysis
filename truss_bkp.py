@@ -100,111 +100,70 @@ class Member(Edge):
 		global_member_stiffness_matrix = T.T @ KL @ T
 		return global_member_stiffness_matrix
 	
+	# ROOM FOR IMPROVEMENT
+	
+	@property
+	def displacement(self):
+		return np.vstack((self.tail.displacement, self.head.displacement))
 
-	# def get_primary_member_stiffness_matrix(self, N:int, indices:List[int]) -> sparse.csr_array:
-	# 	"""Primary member Stiffness Matrix KP"""
-	# 	row, col, data = [], [], []
-	# 	KG = self.get_global_member_stiffness_matrix()
-	# 	for i, line in enumerate(KG):
-	# 		for j, item in enumerate(line):
-	# 			row.append( indices[i] )
-	# 			col.append( indices[j] )
-	# 			data.append(item)
-	# 	primary_member_stiffness_matrix = sparse.csr_array((data, (row, col)), shape=(N,N))
-	# 	return primary_member_stiffness_matrix
-
-	# @property
-	# def u(self):
-	# 	return np.vstack((self.tail.displacement, self.head.displacement))
-
-	# @property
-	# def f(self) -> float:
-	# 	"""Returns the member force"""
-	# 	u = self.u.flatten()
-	# 	T = self.get_transformation_matrix()
-	# 	u1, u2 = T @ u
-	# 	E = self.youngs_modulus
-	# 	A = self.area
-	# 	L = self.get_length()
-	# 	return E*A/L * (u2-u1)
+	@property
+	def member_forces(self) -> float:
+		"""Returns the member force"""
+		u = self.displacement.flatten()
+		T = self.get_transformation_matrix()
+		u1, u2 = T @ u
+		E = self.youngs_modulus
+		A = self.area
+		L = self.get_length()
+		return E*A/L * (u2-u1)
 
 
 class Truss(Graph):
 	"""Class to represent a truss structure"""
 	
 	def get_primary_stiffness_matrix(self):
-	
-		nodes = self.nodes
-		N = len(nodes)
-		nodes_dict = dict(zip(nodes, range(N)))
-		primary_stiffness_matrix = np.zeros((2*N, 2*N))
 		
+		N = len(self.nodes)
+		nodes_dict = dict(zip(self.nodes, range(N)))
+		primary_stiffness_matrix = np.zeros((2*N, 2*N))
 		member : Member
 		for member in self.edges:
 			KG = member.get_global_member_stiffness_matrix()
-			K11 = KG[:2, :2]
-			K12 = KG[:2, 2:]
-			K21 = KG[2:, :2]
-			K22 = KG[2:, 2:]
-			i = nodes_dict[member.tail]
-			j = nodes_dict[member.head]
-			primary_stiffness_matrix
-			# += member.get_primary_member_stiffness_matrix(N, [2*k, 2*k+1, 2*l, 2*l+1])
-			break
-	
-	# @property
-	# def K(self):
-	# 	"""Return the global stiffness matrix"""
+			i = 2*nodes_dict[member.tail]
+			j = 2*nodes_dict[member.head]
+			primary_stiffness_matrix[i:i+2, i:i+2] += KG[:2, :2]
+			primary_stiffness_matrix[i:i+2, j:j+2] += KG[:2, 2:]
+			primary_stiffness_matrix[j:j+2, i:i+2] += KG[2:, :2]
+			primary_stiffness_matrix[j:j+2, j:j+2] += KG[2:, 2:]
+		return primary_stiffness_matrix
 
-	# 	# Fetch all keys
-	# 	keys = self.nodes.get('key')
-
-	# 	# Get the number of DOFS
-	# 	N = 2*len(keys)
+	def solve(self) -> None:
+		"""solves the stiffness matrix system"""
 		
-	# 	# Create an empty matrix for the stiffness matrix
-	# 	K = np.zeros((N,N))
+		# Get the degrees of freedom and external forces. Use np.ravel([A,B], 'F) to concatenate alternating
+		degrees_of_freedom = self.nodes.get('degrees_of_freedom').flatten()
+		external_forces = self.nodes.get('external_forces').flatten()
 
-	# 	# Create a nodes dictionary for the order indexing
-	# 	nodes_dict = {key: i for i, key in enumerate(keys)}
+		# Get the indices of free nodes
+		indices = np.where(degrees_of_freedom == 1)[0]
 
-	# 	# Loops over the members to get their stiffness matrices
-	# 	member : Member
-	# 	for member in self.edges:
-	# 		i,j = member.tail.key, member.head.key
-	# 		k = nodes_dict[i]
-	# 		l = nodes_dict[j]
-	# 		K += member.get_primary_member_stiffness_matrix(N, [2*k, 2*k+1, 2*l, 2*l+1])
+		# Get the global truss stiffness matrix
+		K = self.get_primary_stiffness_matrix()
 
-	# 	return K
+		# Calculate the displacements of free DOFs
+		utemp = solve( K[indices,:][:,indices], external_forces[indices] ) # ax = b
 
-	# def solve(self) -> None:
-	# 	"""solves the stiffness matrix system"""
-		
-	# 	# Get the degrees of freedom and external forces. Use np.ravel([A,B], 'F) to concatenate alternating
-	# 	degrees_of_freedom = self.nodes.get('degrees_of_freedom').flatten()
-	# 	external_forces = self.nodes.get('external_forces').flatten()
+		# Get the number of DOFS. For 3D trusses, the dimension is (N,3)
+		N = len(self.nodes)
+		dim = (N,2)
 
-	# 	# Get the indices of free nodes
-	# 	indices = np.where(degrees_of_freedom == 1)[0]
+		# Reconstruct and set the calculated displacements. For 3D is 3*N
+		u = np.zeros(2*N)
+		np.put(u, indices, utemp)
+		self.nodes.set('displacement', np.reshape(u, dim))
 
-	# 	# Get the global truss stiffness matrix
-	# 	K = self.K
-
-	# 	# Calculate the displacements of free DOFs
-	# 	utemp = solve( K[indices,:][:,indices], external_forces[indices] ) # ax = b
-
-	# 	# Get the number of DOFS. For 3D trusses, the dimension is (N,3)
-	# 	N = len(self.nodes)
-	# 	dim = (N,2)
-
-	# 	# Reconstruct and set the calculated displacements. For 3D is 3*N
-	# 	u = np.zeros(2*N)
-	# 	np.put(u, indices, utemp)
-	# 	self.nodes.set('displacement', np.reshape(u, dim))
-
-	# 	# Calculate the reaction forces
-	# 	self.nodes.set('external_forces', np.reshape(K @ u, dim))
+		# Calculate the reaction forces
+		self.nodes.set('external_forces', np.reshape(K @ u, dim))
 
 
 if __name__ == '__main__':
@@ -223,30 +182,29 @@ if __name__ == '__main__':
 		nodes=Nodes(j0, j1, j2, j3),
 		edges=Edges(m0, m1, m2)
 	)
-	t.get_primary_stiffness_matrix()
 
-	# t.solve()
+	t.solve()
 
-	# from analysis import draw
-	# import matplotlib.pyplot as plt
+	from analysis import draw
+	import matplotlib.pyplot as plt
 
-	# # Get the nodal position
-	# pos = dict(zip(t.nodes, t.nodes.get('coordinates')))
+	# Get the nodal position
+	pos = dict(zip(t.nodes, t.nodes.get('coordinates')))
 
-	# # Create just a figure and only one subplot
-	# fig, ax = plt.subplots()
-	# ax.set_title('Title')
-	# ax.grid()
+	# Create just a figure and only one subplot
+	fig, ax = plt.subplots()
+	ax.set_title('Title')
+	ax.grid()
 
-	# # Draw a simple plot of the truss
-	# draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl=None)
+	# Draw a simple plot of the truss
+	draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl=None)
 
-	# # Get the nodal position
-	# pos = dict(zip(t.nodes, t.nodes.get('coordinates')+1000*t.nodes.get('displacement')))
+	# Get the nodal position
+	pos = dict(zip(t.nodes, t.nodes.get('coordinates')+1000*t.nodes.get('displacement')))
 
-	# # Draw a simple plot of the truss
-	# draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl='f', edecs=2)
-	# plt.show()
+	# Draw a simple plot of the truss
+	draw(graph=t, ax=ax, pos=pos, nlbl='key', eshow=True, elbl='member_forces', edecs=2)
+	plt.show()
 
 
 
