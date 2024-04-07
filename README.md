@@ -1,79 +1,33 @@
-# Electric Circuit Solver using Mesh Analysis
+# 2D Truss Solver
 
-This Python project aims to solve electric circuits using mesh analysis, a common technique used in electrical engineering to analyze complex circuits with multiple loops or meshes. The solver leverages principles of graph theory, object-oriented programming, and linear algebra to efficiently compute the currents flowing through each mesh in the circuit.
+## Introduction
+Welcome to the 2D Truss Solver repository! This Python script offers a powerful computational tool for analyzing 2D truss structures, aiding engineers in understanding their behavior under various loading conditions. Leveraging object-oriented programming principles, efficient numerical methods, and visualization capabilities, this script provides a versatile solution for structural analysis.
 
-![Validation circuit](img/validation.png)
+![Validation truss](img/output.png)
 
 ## Features
+- **Object-Oriented Design:** Structured around classes representing joints, members, and truss, promoting modularity and code reusability.
+- **Easy Setup:** Intuitive setup process allowing users to define truss geometry, apply loads, and constraints effortlessly.
+- **Efficient Solver:** Utilizes numerical methods to accurately determine internal forces and displacements within the truss.
+- **Visualization Capabilities:** Generates clear and informative plots illustrating the deformed shape, internal forces, and reactions within the truss.
+- **Flexibility and Extensibility:** Easily customizable parameters for material properties, section properties, and loading conditions, catering to diverse engineering requirements.
 
-- Mesh analysis implementation to solve resistor circuits.
-- Object-oriented approach for representing nodes, edges, and the circuit graph.
-- Visualization capabilities for circuit graphs.
-- Ability to handle circuits with any number of nodes and edges.
-
-## Requirements
-
-- Python 3.11
-- NumPy
-- SciPy
-- NetworkX
-- Matplotlib
+## Next Steps
+- **Refinement and Validation:** Continual refinement and validation against analytical solutions or experimental data to ensure accuracy and reliability.
+- **Optimization and Performance Enhancement:** Enhance efficiency and performance through algorithmic improvements and optimization techniques.
+- **Extension to Frames:** Extend capabilities to analyze 2D frames, incorporating bending moments and shear forces.
+- **Development of 3D Structural Analysis:** Transition to analyzing 3D trusses and frames, handling spatial relationships and additional complexities.
+- **User Interface Development:** Develop a graphical user interface for enhanced usability and accessibility.
+- **Collaborative Development and Community Engagement:** Foster collaboration and community engagement to drive continuous improvement and innovation.
 
 ## Usage
+1. (WIP) Clone the repository: `git clone https://github.com/username/2d-truss-solver.git`
+2. (WIP) Install dependencies: `pip install -r requirements.txt`
+3. Run the script: `python truss_solver.py`
+4. Follow on-screen prompts to define truss geometry, apply loads, and visualize results.
 
-To use the electric circuit solver, follow these steps:
-
-1. Clone the repository to your local machine.
-2. Install the required dependencies using pip (yet to be implemented):
-
-```
-pip install -r requirements.txt
-```
-
-3. Create a Python script or Jupyter Notebook to define your circuit topology and resistor values.
-4. Import the necessary classes and functions from the `circuit_solver` module.
-5. Define the nodes, edges, and resistor values for your circuit.
-6. Create a `Circuit` object with the provided nodes and edges.
-7. Call the `solve()` method of the `Circuit` object to compute the currents through each mesh.
-8. Visualize the circuit graph and the computed currents using the provided plotting functions.
-
-## Example
-
-Here's a simple example of how to use the electric circuit solver:
-
-```python
-from circuit_solver import Node, Edge, Nodes, Edges, Circuit
-from analysis import draw
-import matplotlib.pyplot as plt
-
-# Define the nodes
-n0 = Node()
-n1 = Node()
-n2 = Node()
-n3 = Node()
-
-# Define the edges (resistors)
-e0 = Edge(n0, n1, resistance=10)
-e1 = Edge(n1, n2, resistance=20)
-e2 = Edge(n2, n3, resistance=15)
-e3 = Edge(n3, n0, resistance=12)
-e4 = Edge(n2, n0, resistance=8)
-
-# Create the circuit
-circuit = Circuit(Nodes(n0, n1, n2, n3), Edges(e0, e1, e2, e3, e4))
-
-# Solve the circuit
-circuit.solve()
-
-# Visualize the circuit and currents
-draw(circuit)
-plt.show()
-```
-
-## Contributing
-
-Contributions to this project are welcome! If you encounter any bugs or have suggestions for improvements, please open an issue on GitHub or submit a pull request with your changes.
+## Contributions
+Contributions, feedback, and suggestions are welcome! Feel free to fork the repository, make enhancements, and submit pull requests.
 
 ## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the [MIT License](LICENSE).
