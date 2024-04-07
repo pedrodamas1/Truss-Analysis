@@ -122,7 +122,7 @@ class Truss(Graph):
 	"""Class to represent a truss structure"""
 	
 	def get_primary_stiffness_matrix(self):
-		
+		"""Calculate the primary stiffness matrix."""
 		N = len(self.nodes)
 		nodes_dict = dict(zip(self.nodes, range(N)))
 		primary_stiffness_matrix = np.zeros((2*N, 2*N))
@@ -138,39 +138,35 @@ class Truss(Graph):
 		return primary_stiffness_matrix
 
 	def solve(self) -> None:
-		"""solves the stiffness matrix system"""
+		"""Solves the stiffness matrix system"""
 		
-		# Get the degrees of freedom and external forces. Use np.ravel([A,B], 'F) to concatenate alternating
-		degrees_of_freedom = self.nodes.get('degrees_of_freedom').flatten()
-		external_forces = self.nodes.get('external_forces').flatten()
+		# Get the degrees of freedom and external forces
+		dof = self.nodes.get('degrees_of_freedom')
+		fext = self.nodes.get('external_forces')
 
-		# Get the indices of free nodes
-		indices = np.where(degrees_of_freedom == 1)[0]
+		# Get the indices of free nodes flattened out
+		idx = np.where(dof.flatten() == 1)[0]
 
 		# Get the global truss stiffness matrix
 		K = self.get_primary_stiffness_matrix()
 
-		# Calculate the displacements of free DOFs
-		utemp = solve( K[indices,:][:,indices], external_forces[indices] ) # ax = b
+		# Calculate the displacements of free DOFs (Ax = b)
+		utemp = solve( K[idx,:][:,idx], fext.flatten()[idx] )
 
-		# Get the number of DOFS. For 3D trusses, the dimension is (N,3)
-		N = len(self.nodes)
-		dim = (N,2)
-
-		# Reconstruct and set the calculated displacements. For 3D is 3*N
-		u = np.zeros(2*N)
-		np.put(u, indices, utemp)
-		self.nodes.set('displacement', np.reshape(u, dim))
+		# Reconstruct and set the calculated displacements
+		u = np.zeros(dof.shape)
+		np.put(u, np.where(dof == 1), utemp)
+		self.nodes.set('displacement', np.reshape(u, dof.shape))
 
 		# Calculate the reaction forces
-		self.nodes.set('external_forces', np.reshape(K @ u, dim))
+		self.nodes.set('external_forces', np.reshape(K @ u.flatten(), fext.shape))
 
 
 if __name__ == '__main__':
-	j0 = Joint(coordinates=np.array([0,0]), external_forces=np.zeros(2), displacement=np.zeros(2), degrees_of_freedom=np.zeros(2), key=0)
-	j1 = Joint(coordinates=np.array([4,0]), external_forces=np.zeros(2), displacement=np.zeros(2), degrees_of_freedom=np.zeros(2), key=1)
-	j2 = Joint(coordinates=np.array([8,0]), external_forces=np.zeros(2), displacement=np.zeros(2), degrees_of_freedom=np.zeros(2), key=2)
-	j3 = Joint(coordinates=np.array([4,-6]), external_forces=np.array([1.e5, -1.e5]), displacement=np.zeros(2), degrees_of_freedom=np.array([1,1]), key=3)
+	j0 = Joint(coordinates=np.array([0,0]), key=0)
+	j1 = Joint(coordinates=np.array([4,0]), key=1)
+	j2 = Joint(coordinates=np.array([8,0]), key=2)
+	j3 = Joint(coordinates=np.array([4,-6]), external_forces=np.array([1.e5, -1.e5]), degrees_of_freedom=np.array([1,1]), key=3)
 
 	m0 = Member(tail=j0, head=j3, youngs_modulus=2.e11, area=5.e-3, key='A')
 	m1 = Member(tail=j1, head=j3, youngs_modulus=2.e11, area=5.e-3, key='B')
